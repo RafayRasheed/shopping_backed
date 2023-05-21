@@ -19,7 +19,7 @@ app.use(bodyParser.json())
 // app.use('/places', placeRouter);
 
 //users routes
-app.use('/users', userRouter);
+app.use('https://enthusiastic-bull-loincloth.cyclic.app/users', userRouter);
 
 //For Invalid Route Error
 app.use((req, res, next) => {
