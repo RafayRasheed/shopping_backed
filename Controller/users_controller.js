@@ -26,6 +26,54 @@ const getUsers = async (req, res, next) => {
 
 
 
+function verifyName(name) {
+    if (name && name.length) {
+        if (name.length > 2) {
+            return true
+        }
+        return 'Name is too Short'
+    }
+    return 'Name Cannot be Empty'
+}
+function verifyEmail(email) {
+    if (email && email.length) {
+        let reg = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w\w+)+$/;
+        if (reg.test(email)) {
+            return true
+        }
+        return 'Please Enter a Valid Email'
+    }
+    return 'Email Cannot be Empty'
+}
+
+function verifyPass(password) {
+    if (password && password.length) {
+        if (password.length > 5) {
+            const reg = /(?=.*[a-zA-Z])(?=.*\d)/
+            if (reg.test(password)) {
+                return true
+            }
+            return 'Password must contain letter and a number'
+        }
+        return 'Password must be at least 6 character'
+    }
+
+    return 'Password Cannot be Empty'
+
+}
+
+function varifySinUp(name, email, password) {
+    let error = verifyName(name)
+    if (error != true) {
+        return error
+    }
+    error = verifyEmail(email)
+    if (error != true) {
+        return error
+    }
+    error = verifyEmail(password)
+    return error
+}
 
 const signUp = async (req, res, next) => {
     const validError = validationResult(req);
@@ -34,31 +82,35 @@ const signUp = async (req, res, next) => {
         throw new HTMLError('Enter a correct data', 422)
     }
     const { name, email, password } = req.body;
-
+    const isValid = varifySinUp(name, email, password)
+    if (isValid != true) {
+        return next(new HTMLError(isValid, 422))
+    }
     const salt = await bcrypt.genSalt(10);
     const securePass = await bcrypt.hash(password, salt);
     let user;
-    const createUser = new Schemas.User({
-        name,
-        email,
-        password: securePass,
-    })
+    // console.log(email)
+    // const createUser = new Schemas.User({
+    //     name,
+    //     email,
+    //     password: securePass,
+    // })
 
-    try {
-        user = await createUser.save()
-    }
-    catch (error) {
-        if (error.code == 11000) {
-            return next(new HTMLError('User already exists with this email address', 422))
-        }
-        return next(new HTMLError(error.message, 422))
-    }
-    const tokenData = {
-        userId: user._id
-    }
+    // try {
+    //     user = await createUser.save()
+    // }
+    // catch (error) {
+    //     if (error.code == 11000) {
+    //         return next(new HTMLError('User already exists with this email address', 422))
+    //     }
+    //     return next(new HTMLError(error.message, 422))
+    // }
+    // const tokenData = {
+    //     userId: user._id
+    // }
 
-    const token = jwt.sign(tokenData, JWT_KEY);
-    res.status(200).json({ token })
+    // const token = jwt.sign(tokenData, JWT_KEY);
+    // res.status(200).json({ token })
 }
 
 
@@ -140,8 +192,8 @@ const updateUser = async (req, res, next) => {
 
 
 const getUserDetails = async (req, res, next) => {
-    const token  = req.header('auth-token');
-    if(!token){
+    const token = req.header('auth-token');
+    if (!token) {
         return next(new HTMLError('Authentication failed', 422))
     }
 
@@ -152,7 +204,7 @@ const getUserDetails = async (req, res, next) => {
     } catch (error) {
         return next(new HTMLError('Authentication failed', 422))
     }
-    
+
     let user;
     try {
         user = await Schemas.User.findById(req.userId).select('-password');
@@ -164,7 +216,7 @@ const getUserDetails = async (req, res, next) => {
 }
 
 
- 
+
 
 
 const getUserById = async (req, res, next) => {
@@ -217,3 +269,7 @@ exports.updateUser = updateUser;
 exports.getUserById = getUserById;
 exports.deleteUser = deleteUser;
 exports.getUserDetails = getUserDetails;
+exports.getUserDetails = verifyName;
+exports.getUserDetails = verifyEmail;
+exports.getUserDetails = verifyPass;
+exports.getUserDetails = varifySinUp;
