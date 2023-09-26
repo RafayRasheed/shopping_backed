@@ -12,8 +12,8 @@ const signin = new mongoos.Schema({
     email: { type: String, require: true, unique: true },
     password: { type: String, require: true },
 });
-const LoginUser = mongoos.model('',signin);
+const LoginUser = mongoos.model('', signin);
 
 
-exports.User = CreateUser; 
+exports.User = CreateUser;
 exports.LoginUser = LoginUser; 

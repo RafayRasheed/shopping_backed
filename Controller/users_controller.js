@@ -2,7 +2,7 @@ const uuid = require('uuid');
 const HTMLError = require('../Model/html_error');
 const { validationResult } = require('express-validator');
 const Schemas = require('../Model/schemas');
-
+const { commonError, commonJson } = require('../common')
 //For Hashing & Salt Password
 const bcrypt = require('bcryptjs');
 // For Authentication
@@ -28,10 +28,16 @@ const getUsers = async (req, res, next) => {
 
 function verifyName(name) {
     if (name && name.length) {
-        if (name.length > 2) {
-            return true
+        let reg = /^[a-zA-Z]+$/;
+        console.log(reg.test(name))
+        if (reg.test(name)) {
+
+            if (name.length > 2) {
+                return true
+            }
+            return 'Name is too Short'
         }
-        return 'Name is too Short'
+        return 'Please Enter a Valid Name'
     }
     return 'Name Cannot be Empty'
 }
@@ -71,7 +77,7 @@ function varifySinUp(name, email, password) {
     if (error != true) {
         return error
     }
-    error = verifyEmail(password)
+    error = verifyPass(password)
     return error
 }
 
@@ -89,33 +95,33 @@ const signUp = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const securePass = await bcrypt.hash(password, salt);
     let user;
-    // console.log(email)
-    // const createUser = new Schemas.User({
-    //     name,
-    //     email,
-    //     password: securePass,
-    // })
+    const createUser = new Schemas.User({
+        name,
+        email,
+        password: securePass,
+    })
 
-    // try {
-    //     user = await createUser.save()
-    // }
-    // catch (error) {
-    //     if (error.code == 11000) {
-    //         return next(new HTMLError('User already exists with this email address', 422))
-    //     }
-    //     return next(new HTMLError(error.message, 422))
-    // }
-    // const tokenData = {
-    //     userId: user._id
-    // }
+    try {
+        user = await createUser.save()
+    }
+    catch (error) {
+        if (error.code == 11000) {
+            return next(new HTMLError('User already exists with this email address', 422))
+        }
+        return next(new HTMLError(commonError, 422))
+    }
+    const tokenData = {
+        userId: user._id
+    }
 
-    // const token = jwt.sign(tokenData, JWT_KEY);
-    // res.status(200).json({ token })
+    const token = jwt.sign(tokenData, JWT_KEY);
+
+    res.status(200).json(commonJson(1, 'Account Created Successfully', { token }))
 }
 
 
 
-function VerifyPass(param1, param2) {
+function ValidPass(param1, param2) {
     return new Promise(function (resolve, reject) {
         bcrypt.compare(param1, param2, function (err, res) {
             if (err) {
@@ -141,14 +147,14 @@ const signin = async (req, res, next) => {
     try {
         user = await Schemas.User.findOne({ email });
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
 
     if (!user) {
         return next(new HTMLError('Incorrect information', 422))
     }
 
-    const isPassword = await VerifyPass(password, user.password)
+    const isPassword = await ValidPass(password, user.password)
 
     if (!isPassword == true) {
         return next(new HTMLError('Incorrect information', 422))
@@ -170,7 +176,7 @@ const updateUser = async (req, res, next) => {
     try {
         user = await Schemas.User.findById(userId);
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
 
     if (!user) {
@@ -209,7 +215,7 @@ const getUserDetails = async (req, res, next) => {
     try {
         user = await Schemas.User.findById(req.userId).select('-password');
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
 
     res.status(200).json(user)
@@ -225,7 +231,7 @@ const getUserById = async (req, res, next) => {
     try {
         user = await Schemas.User.findById(userId);
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
 
     if (!user) {
@@ -246,7 +252,7 @@ const deleteUser = async (req, res, next) => {
     try {
         user = await Schemas.User.findById(userId)
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
 
     if (!user) {
@@ -256,7 +262,7 @@ const deleteUser = async (req, res, next) => {
     try {
         await user.deleteOne()
     } catch (error) {
-        return next(new HTMLError(error.message, 422))
+        return next(new HTMLError(commonError, 422))
     }
     res.status(200).json({ message: `Deleted successfully` });
 }
@@ -269,7 +275,7 @@ exports.updateUser = updateUser;
 exports.getUserById = getUserById;
 exports.deleteUser = deleteUser;
 exports.getUserDetails = getUserDetails;
-exports.getUserDetails = verifyName;
-exports.getUserDetails = verifyEmail;
-exports.getUserDetails = verifyPass;
-exports.getUserDetails = varifySinUp;
+// exports.getUserDetails = verifyName;
+// exports.getUserDetails = verifyEmail;
+// exports.getUserDetails = verifyPass;
+// exports.getUserDetails = varifySinUp;

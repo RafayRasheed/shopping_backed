@@ -5,9 +5,7 @@ const { check } = require('express-validator');
 
 router.get('/', usersController.getUsers);
 
-router.post('/signup', [check('name').not().isEmpty(),
-check('email').not().isEmpty(),
-check('password').not().isEmpty()], usersController.signUp);
+router.post('/signup', usersController.signUp);
 
 router.post('/signin',
     [check('email').not().isEmpty(),
