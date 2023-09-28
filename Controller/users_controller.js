@@ -2,7 +2,7 @@ const uuid = require('uuid');
 const HTMLError = require('../Model/html_error');
 const { validationResult } = require('express-validator');
 const Schemas = require('../Model/schemas');
-const { commonError, commonJson } = require('../common')
+const { commonError, commonJson, getDateAndTime, getDateInt } = require('../common')
 //For Hashing & Salt Password
 const bcrypt = require('bcryptjs');
 // For Authentication
@@ -20,7 +20,7 @@ const getUsers = async (req, res, next) => {
     } catch (err) {
         return next(new HTMLError(err.message, 422))
     }
-    res.status(200).json(users);
+    res.status(200).json(commonJson(1, "Found Successfulyy", { users }));
 }
 
 
@@ -29,7 +29,6 @@ const getUsers = async (req, res, next) => {
 function verifyName(name) {
     if (name && name.length) {
         let reg = /^[a-zA-Z]+$/;
-        console.log(reg.test(name))
         if (reg.test(name)) {
 
             if (name.length > 2) {
@@ -94,13 +93,20 @@ const signUp = async (req, res, next) => {
     }
     const salt = await bcrypt.genSalt(10);
     const securePass = await bcrypt.hash(password, salt);
-    let user;
-    const createUser = new Schemas.User({
+    let dateNew = new Date()
+    const { date, time, lastUpdate } = getDateAndTime(dateNew)
+    let user = {
         name,
         email,
         password: securePass,
-    })
+        show: true,
+        dateInt: getDateInt(dateNew),
+        date,
+        time,
+        lastUpdate
+    };
 
+    const createUser = new Schemas.User(user)
     try {
         user = await createUser.save()
     }
@@ -116,8 +122,9 @@ const signUp = async (req, res, next) => {
 
     const token = jwt.sign(tokenData, JWT_KEY);
 
-    res.status(200).json(commonJson(1, 'Account Created Successfully', { token }))
+    res.status(200).json(commonJson(1, 'Account Created Successfully', { token, user }))
 }
+
 
 
 
@@ -159,13 +166,27 @@ const signin = async (req, res, next) => {
     if (!isPassword == true) {
         return next(new HTMLError('Incorrect information', 422))
     }
+    let dateNew = new Date()
+    const { lastUpdate } = getDateAndTime(dateNew)
+    // user.lastSignIn= lastUpdate
+
+    try {
+        await user.save()
+    } catch (error) {
+        return next(new HTMLError('could not update', 422))
+    }
 
     const tokenData = {
         userId: user._id
     }
-
     const token = jwt.sign(tokenData, JWT_KEY);
-    res.status(200).json({ token })
+    const data = {
+        token,
+        user,
+    }
+
+
+    res.status(200).json(commonJson(1, 'Sign In Successfully', user))
 
 }
 
