@@ -117,7 +117,7 @@ const signUp = async (req, res, next) => {
         return next(new HTMLError(commonError, 422))
     }
     const tokenData = {
-        userId: user._id
+        _id: user._id
     }
 
     const token = jwt.sign(tokenData, JWT_KEY);
@@ -153,6 +153,7 @@ const signin = async (req, res, next) => {
     let user;
     try {
         user = await Schemas.User.findOne({ email });
+        // user.updateOne({ name: 'as' })
     } catch (error) {
         return next(new HTMLError(commonError, 422))
     }
@@ -173,46 +174,56 @@ const signin = async (req, res, next) => {
     try {
         await user.save()
     } catch (error) {
-        return next(new HTMLError('could not update', 422))
+        return next(new HTMLError(error, 422))
     }
 
     const tokenData = {
         userId: user._id
     }
     const token = jwt.sign(tokenData, JWT_KEY);
+
+
     const data = {
         token,
         user,
     }
 
 
-    res.status(200).json(commonJson(1, 'Sign In Successfully', user))
+    res.status(200).json(commonJson(1, 'Sign In Successfully', data))
 
 }
 
 
 const updateUser = async (req, res, next) => {
     const userId = req.params.pid;
-    let user;
+    console.log(req.header('Token'))
+    const { user, token } = req.body;
+
+    let tokenId = ''
+
     try {
-        user = await Schemas.User.findById(userId);
+        tokenId = jwt.verify(token, JWT_KEY)._id
+    } catch (error) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    if (tokenId != userId) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    let FindUser;
+    try {
+        FindUser = await Schemas.User.findById(userId);
     } catch (error) {
         return next(new HTMLError(commonError, 422))
     }
 
-    if (!user) {
+    if (!FindUser) {
         return next(new HTMLError('user not found', 422))
     }
+    FindUser.name = user.name
 
-    user.name = req.body.name;
-
-    try {
-        await user.save()
-    } catch (error) {
-        return next(new HTMLError('could not update', 422))
-    }
-
-    res.status(200).json(user);
+    res.status(200).json(commonJson(1, 'Profile Updated Successfully', FindUser));
 }
 
 
