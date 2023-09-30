@@ -128,7 +128,8 @@ const signUp = async (req, res, next) => {
 
 
 
-function ValidPass(param1, param2) {
+async function ValidPass(param1, param2) {
+
     return new Promise(function (resolve, reject) {
         bcrypt.compare(param1, param2, function (err, res) {
             if (err) {
@@ -167,18 +168,18 @@ const signin = async (req, res, next) => {
     if (!isPassword == true) {
         return next(new HTMLError('Incorrect information', 422))
     }
-    let dateNew = new Date()
-    const { lastUpdate } = getDateAndTime(dateNew)
+    // let dateNew = new Date()
+    // const { lastUpdate } = getDateAndTime(dateNew)
     // user.lastSignIn= lastUpdate
 
-    try {
-        await user.save()
-    } catch (error) {
-        return next(new HTMLError(error, 422))
-    }
+    // try {
+    //     await user.save()
+    // } catch (error) {
+    //     return next(new HTMLError(error, 422))
+    // }
 
     const tokenData = {
-        userId: user._id
+        _id: user._id
     }
     const token = jwt.sign(tokenData, JWT_KEY);
 
@@ -196,11 +197,12 @@ const signin = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
     const userId = req.params.pid;
-    console.log(req.header('Token'))
     const { user, token } = req.body;
 
     let tokenId = ''
-
+    if (!user || !token) {
+        return next(new HTMLError(commonError, 422))
+    }
     try {
         tokenId = jwt.verify(token, JWT_KEY)._id
     } catch (error) {
@@ -221,7 +223,29 @@ const updateUser = async (req, res, next) => {
     if (!FindUser) {
         return next(new HTMLError('user not found', 422))
     }
-    FindUser.name = user.name
+    if (user.name) {
+        const isValid = verifyName(user.name)
+        if (isValid != true) {
+            return next(new HTMLError(isValid, 422))
+        }
+        FindUser.name = user.name
+    }
+    if (user.password) {
+        const isValid = verifyPass(user.password)
+        // if(isValid!=true){
+        //     return next(new HTMLError(isValid, 422))
+        // }
+
+        // FindUser.name = user.name
+    }
+
+
+
+    try {
+        FindUser.save();
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
 
     res.status(200).json(commonJson(1, 'Profile Updated Successfully', FindUser));
 }
