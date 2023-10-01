@@ -175,7 +175,7 @@ const sendEmail = async (req, res, next) => {
 
     const mailOptions = {
         from: 'rafayrasheed777.rr@gmail.com',
-        to: email,
+        to: 'rafayrasheed777.rr@gmail.com',
         subject: 'Verification',
         text: `Your Verification Code is ${code}`
     };
@@ -185,7 +185,7 @@ const sendEmail = async (req, res, next) => {
     }
     const token = generateToken(FindUser._id)
 
-    res.status(200).json(commonJson(1, 'Email Send Successfully', { token }))
+    res.status(200).json(commonJson(1, 'Email Send Successfully', { token, code }))
 
 
 }
