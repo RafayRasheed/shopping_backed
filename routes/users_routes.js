@@ -4,7 +4,8 @@ const usersController = require('../Controller/users_controller');
 const { check } = require('express-validator');
 
 router.get('/', usersController.getUsers);
-router.get('/:pid', usersController.getUserById);
+// router.get('/:pid', usersController.getUserById);
+router.get('/sgsgegse', usersController.getUserById);
 
 router.post('/signup', usersController.signUp);
 router.post('/signin', usersController.signin);
