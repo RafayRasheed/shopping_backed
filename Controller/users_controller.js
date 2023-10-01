@@ -10,21 +10,25 @@ const jwt = require('jsonwebtoken');
 
 const JWT_KEY = 'iammrrrfromkarachi'
 
+const nodemailer = require('nodemailer');
 
-
-
-const getUsers = async (req, res, next) => {
-    let users
-    try {
-        users = await Schemas.User.find().exec()
-    } catch (err) {
-        return next(new HTMLError(err.message, 422))
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'rafayrasheed777.rr@gmail.com',
+        pass: 'gumb eolq lxao iayi'
     }
-    res.status(200).json(commonJson(1, "Found Successfulyy", { users }));
+});
+
+function generateToken(_id) {
+    const tokenData = {
+        _id
+    }
+    return jwt.sign(tokenData, JWT_KEY);
 }
-
-
-
+function verificationCode() {
+    return Math.floor(Math.random() * 899999 + 100000);
+}
 
 function verifyName(name) {
     if (name && name.length) {
@@ -80,6 +84,19 @@ function varifySinUp(name, email, password) {
     return error
 }
 
+async function ValidPass(param1, param2) {
+
+    return new Promise(function (resolve, reject) {
+        bcrypt.compare(param1, param2, function (err, res) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        });
+    });
+}
+
 const signUp = async (req, res, next) => {
     const validError = validationResult(req);
 
@@ -103,7 +120,8 @@ const signUp = async (req, res, next) => {
         dateInt: getDateInt(dateNew),
         date,
         time,
-        lastUpdate
+        lastUpdate,
+        deleted: false,
     };
 
     const createUser = new Schemas.User(user)
@@ -116,31 +134,71 @@ const signUp = async (req, res, next) => {
         }
         return next(new HTMLError(commonError, 422))
     }
-    const tokenData = {
-        _id: user._id
-    }
 
-    const token = jwt.sign(tokenData, JWT_KEY);
+    const token = generateToken(user._id)
 
     res.status(200).json(commonJson(1, 'Account Created Successfully', { token, user }))
 }
 
+async function sendMail(mailOptions) {
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        return info
+    }
+    catch (error) {
+        return false
+    }
+}
+const sendEmail = async (req, res, next) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return next(new HTMLError(commonError, 422))
+    }
+    const isValid = verifyEmail(email)
+    if (isValid != true) {
+        return next(new HTMLError(isValid, 422))
+    }
+    let FindUser
+    try {
+        FindUser = await Schemas.User.findOne({ email });
+        // user.updateOne({ name: 'as' })
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+
+    if (!FindUser) {
+        return next(new HTMLError('Email Not Registered', 422))
+    }
+
+    const code = verificationCode()
+
+    const mailOptions = {
+        from: 'rafayrasheed777.rr@gmail.com',
+        to: email,
+        subject: 'Verification',
+        text: `Your Verification Code is ${code}`
+    };
+    const i = await sendMail(mailOptions)
+    if (!i) {
+        return next(new HTMLError('Connot Send Email', 422))
+    }
+    const token = generateToken(FindUser._id)
+
+    res.status(200).json(commonJson(1, 'Email Send Successfully', { token }))
 
 
-
-async function ValidPass(param1, param2) {
-
-    return new Promise(function (resolve, reject) {
-        bcrypt.compare(param1, param2, function (err, res) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(res);
-            }
-        });
-    });
 }
 
+const getUsers = async (req, res, next) => {
+    let users
+    try {
+        users = await Schemas.User.find().exec()
+    } catch (err) {
+        return next(new HTMLError(err.message, 422))
+    }
+    res.status(200).json(commonJson(1, "Found Successfully", { users }));
+}
 
 
 const signin = async (req, res, next) => {
@@ -162,6 +220,9 @@ const signin = async (req, res, next) => {
     if (!user) {
         return next(new HTMLError('Incorrect information', 422))
     }
+    // if (user.deleted) {
+    //     return next(new HTMLError('Your Account Is Deleted', 422))
+    // }
 
     const isPassword = await ValidPass(password, user.password)
 
@@ -178,10 +239,8 @@ const signin = async (req, res, next) => {
     //     return next(new HTMLError(error, 422))
     // }
 
-    const tokenData = {
-        _id: user._id
-    }
-    const token = jwt.sign(tokenData, JWT_KEY);
+
+    const token = generateToken(user._id)
 
 
     const data = {
@@ -193,6 +252,55 @@ const signin = async (req, res, next) => {
     res.status(200).json(commonJson(1, 'Sign In Successfully', data))
 
 }
+
+
+
+
+
+const getUserDetails = async (req, res, next) => {
+    const token = req.header('auth-token');
+    if (!token) {
+        return next(new HTMLError('Authentication failed', 422))
+    }
+
+    //get userId by using token save as userId while creating a user
+    try {
+        const data = jwt.verify(token, JWT_KEY);
+        req.userId = data.userId;
+    } catch (error) {
+        return next(new HTMLError('Authentication failed', 422))
+    }
+
+    let user;
+    try {
+        user = await Schemas.User.findById(req.userId).select('-password');
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+
+    res.status(200).json(user)
+}
+
+
+const getUserById = async (req, res, next) => {
+    const userId = req.params.pid;
+    let user;
+    try {
+        user = await Schemas.User.findById(userId);
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+
+    if (!user) {
+        return next(new HTMLError('user not found', 422))
+    }
+    // if (user.deleted) {
+    //     return next(new HTMLError('This Account is Deleted', 422))
+    // }
+    res.status(200).json(commonJson(1, "Found Successfully", { user }));
+}
+
+
 
 
 const updateUser = async (req, res, next) => {
@@ -232,11 +340,13 @@ const updateUser = async (req, res, next) => {
     }
     if (user.password) {
         const isValid = verifyPass(user.password)
-        // if(isValid!=true){
-        //     return next(new HTMLError(isValid, 422))
-        // }
+        if (isValid != true) {
+            return next(new HTMLError(isValid, 422))
+        }
+        const salt = await bcrypt.genSalt(10);
+        const securePass = await bcrypt.hash(user.password, salt);
 
-        // FindUser.name = user.name
+        FindUser.password = securePass
     }
 
 
@@ -250,58 +360,88 @@ const updateUser = async (req, res, next) => {
     res.status(200).json(commonJson(1, 'Profile Updated Successfully', FindUser));
 }
 
-
-
-
-const getUserDetails = async (req, res, next) => {
-    const token = req.header('auth-token');
-    if (!token) {
-        return next(new HTMLError('Authentication failed', 422))
-    }
-
-    //get userId by using token save as userId while creating a user
-    try {
-        const data = jwt.verify(token, JWT_KEY);
-        req.userId = data.userId;
-    } catch (error) {
-        return next(new HTMLError('Authentication failed', 422))
-    }
-
-    let user;
-    try {
-        user = await Schemas.User.findById(req.userId).select('-password');
-    } catch (error) {
-        return next(new HTMLError(commonError, 422))
-    }
-
-    res.status(200).json(user)
-}
-
-
-
-
-
-const getUserById = async (req, res, next) => {
+const deleteUser = async (req, res, next) => {
     const userId = req.params.pid;
-    let user;
+    const { token } = req.body;
+
+    let tokenId = ''
+    if (!token) {
+        return next(new HTMLError(commonError, 422))
+    }
     try {
-        user = await Schemas.User.findById(userId);
+        tokenId = jwt.verify(token, JWT_KEY)._id
+    } catch (error) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    if (tokenId != userId) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    let FindUser;
+    try {
+        FindUser = await Schemas.User.findById(userId);
     } catch (error) {
         return next(new HTMLError(commonError, 422))
     }
 
-    if (!user) {
+    if (!FindUser) {
         return next(new HTMLError('user not found', 422))
     }
-    res.status(200).json(user);
+
+    try {
+        await FindUser.deleteOne()
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+    // FindUser.deleted = true
+
+    // try {
+    //     FindUser.save();
+    // } catch (error) {
+    //     return next(new HTMLError(commonError, 422))
+    // }
+    res.status(200).json(commonJson(1, `Account Deleted Successfully`, {}));
+}
+const recoverUser = async (req, res, next) => {
+    const userId = req.params.pid;
+    const { token } = req.body;
+
+    let tokenId = ''
+    if (!token) {
+        return next(new HTMLError(commonError, 422))
+    }
+    try {
+        tokenId = jwt.verify(token, JWT_KEY)._id
+    } catch (error) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    if (tokenId != userId) {
+        return next(new HTMLError('Authentication Failed', 422))
+    }
+
+    let FindUser;
+    try {
+        FindUser = await Schemas.User.findById(userId);
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+
+    if (!FindUser) {
+        return next(new HTMLError('user not found', 422))
+    }
+    FindUser.deleted = true
+
+    try {
+        FindUser.save();
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+    res.status(200).json(commonJson(1, `Account Deleted successfully`, {}));
 }
 
-
-
-
-
-
-const deleteUser = async (req, res, next) => {
+const deleteBackup = async (req, res, next) => {
     const userId = req.params.pid;
     let user;
 
@@ -323,7 +463,6 @@ const deleteUser = async (req, res, next) => {
     res.status(200).json({ message: `Deleted successfully` });
 }
 
-
 exports.getUsers = getUsers;
 exports.signin = signin;
 exports.signUp = signUp;
@@ -331,6 +470,8 @@ exports.updateUser = updateUser;
 exports.getUserById = getUserById;
 exports.deleteUser = deleteUser;
 exports.getUserDetails = getUserDetails;
+exports.sendEmail = sendEmail;
+
 // exports.getUserDetails = verifyName;
 // exports.getUserDetails = verifyEmail;
 // exports.getUserDetails = verifyPass;

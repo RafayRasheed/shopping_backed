@@ -8,11 +8,13 @@ router.get('/:pid', usersController.getUserById);
 
 router.post('/signup', usersController.signUp);
 router.post('/signin', usersController.signin);
-router.post('/getuser', usersController.getUserDetails);
+router.post('/sendEmail', usersController.sendEmail);
+// router.post('/getuser', usersController.getUserDetails);
 
 router.patch('/:pid', usersController.updateUser);
 
 router.delete('/:pid', usersController.deleteUser);
+
 
 
 module.exports = router;
