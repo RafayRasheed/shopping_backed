@@ -123,6 +123,55 @@ const signUp = async (req, res, next) => {
         lastUpdate,
         deleted: false,
     };
+    let isUser
+    try {
+        isUser = await Schemas.User.findOne({ email });
+        // user.updateOne({ name: 'as' })
+    } catch (error) {
+        return next(new HTMLError(commonError, 422))
+    }
+
+    if (isUser) {
+        return next(new HTMLError('User already exists with this email address', 422))
+    }
+    const code = verificationCode()
+
+    const mailOptions = {
+        from: 'rafayrasheed777.rr@gmail.com',
+        to: email,
+        subject: 'Verification',
+        text: `Your Verification Code is ${code}`
+    };
+    const i = await sendMail(mailOptions)
+    if (!i) {
+        return next(new HTMLError('Connot Send Email', 422))
+    }
+    // const createUser = new Schemas.User(user)
+    // try {
+    //     user = await createUser.save()
+    // }
+    // catch (error) {
+    //     if (error.code == 11000) {
+    //         return next(new HTMLError('User already exists with this email address', 422))
+    //     }
+    //     return next(new HTMLError(commonError, 422))
+    // }
+
+    const data = generateToken(user)
+
+    res.status(200).json(commonJson(1, 'Email Send Successfully', { data, code }))
+}
+
+const saveUser = async (req, res, next) => {
+
+    const { data } = req.body;
+
+    let user
+    try {
+        user = jwt.verify(data, JWT_KEY)._id
+    } catch (error) {
+        return next(new HTMLError('Authentication failed', 422))
+    }
 
     const createUser = new Schemas.User(user)
     try {
@@ -471,6 +520,8 @@ exports.getUserById = getUserById;
 exports.deleteUser = deleteUser;
 exports.getUserDetails = getUserDetails;
 exports.sendEmail = sendEmail;
+exports.saveUser = saveUser;
+
 
 // exports.getUserDetails = verifyName;
 // exports.getUserDetails = verifyEmail;

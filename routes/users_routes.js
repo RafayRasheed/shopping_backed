@@ -7,6 +7,8 @@ router.get('/', usersController.getUsers);
 router.get('/:pid', usersController.getUserById);
 
 router.post('/signup', usersController.signUp);
+//save user to db after varification
+router.post('/saveUser', usersController.saveUser);
 router.post('/signin', usersController.signin);
 router.post('/sendEmail', usersController.sendEmail);
 // router.post('/getuser', usersController.getUserDetails);
