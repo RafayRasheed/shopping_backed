@@ -175,7 +175,7 @@ const sendEmail = async (req, res, next) => {
 
     const mailOptions = {
         from: 'rafayrasheed777.rr@gmail.com',
-        to: 'rafayrasheed777.rr@gmail.com',
+        to: email,
         subject: 'Verification',
         text: `Your Verification Code is ${code}`
     };
