@@ -9,6 +9,7 @@ const signup = new mongoos.Schema({
     time: { type: String, require: true },
     lastUpdate: { type: String, require: true },
     deleted: { type: Boolean, require: true },
+    data: { type: Object, require: false }
 });
 const CreateUser = mongoos.model("User", signup);
 
